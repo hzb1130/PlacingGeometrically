@@ -9,7 +9,7 @@ A variant of the original placement mod that adds grid-based and more structured
 Based on / 基于：  
 https://github.com/DigitalzombieTLD/tld-placing-anywhere
 
----
+![效果](1.png)
 
 ## Features / 功能
 
