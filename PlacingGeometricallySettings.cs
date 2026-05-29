@@ -7,98 +7,250 @@ namespace PlacingGeometrically
 {
     internal class PlacingGeometricallySettings : JsonModSettings
     {
-        //==================== Master Switch ====================
-        [Section("Master Switch")]
+        //==================== 总开关 ==中英文改三处注释
 
-        [Name("Enable Free Placement")]
-        [Description("Allow objects to be placed anywhere without grid or collision restrictions")]
+        // [Section("总开关")]
+
+        // [Name("启用任意放置")]
+        // [Description("开启任意放置")]
+        // public bool enableAnyPlace = true;
+
+        // //==================== 第二层：细致摆放 ====================
+
+        // [Section("细致摆放")]
+
+        // [Name("启用细致摆放模式")]
+        // [Description("开启后解锁高级摆放（HUD、旋转、微调等）")]
+        // public bool enableFineMode = true;
+
+        // //==================== 基础参数 ====================
+
+        // [Section("基础参数")]
+
+        // [Name("细调移动步长")]
+        // [Slider(0.01f, 1f, 100, NumberFormat = "{0:F2}")]
+        // [Description("每次按键后移动的步长")]
+        // public float fineMoveStep = 0.1f;
+
+        // [Name("旋转角大小")]
+        
+        // [Slider(0, 360)]
+        // [Description("每次按键后旋转的角度")]
+        // public int rotateDivide = 30;
+
+        // //==================== 辅助显示 ====================
+
+        // [Section("辅助显示")]
+
+        // [Name("开启物品辅助线条")]
+        // [Description("选择辅助三轴的方向模式")]
+        // [Choice("不显示","世界坐标XYZ","物品局部XYZ")]
+        // public int axisDisplayMode = 0;
+
+        // [Name("辅助网格显示模式")]
+        // [Description("显示一个网格")]
+        // [Choice("关闭", "始终开启", "仅网格模式")]
+        // public int gridDisplayMode = 2;
+
+        // //==================== HUD ====================
+
+        // [Section("HUD设置")]
+
+        // [Name("HUD横向偏移(X)")]
+        // [Slider(-500, 500)]
+        // public int hudOffsetX = -400;
+
+        // [Name("HUD纵向偏移(Y)")]
+        // [Slider(-400, 400)]
+        // public int hudOffsetY = 200;
+
+        // //==================== 物品信息 ====================
+
+        // [Section("物品信息")]
+
+        // [Name("显示物品信息")]
+        // [Description("显示坐标与旋转信息")]
+        // public bool enablePlacementInfo = true;
+
+        // [Name("信息X偏移")]
+        // [Slider(0, 2000)]
+        // [Description("距离屏幕右下角的横向偏移")]
+        // public int infoOffsetX = 0;
+
+        // [Name("信息Y偏移")]
+        // [Slider(0, 1000)]
+        // [Description("距离屏幕右下角的纵向偏移")]
+        // public int infoOffsetY = 0;
+
+        // //==================== 模式按键 ====================
+
+        // [Section("模式切换按键")]
+
+        // [Name("网格放置")]
+        // [Description("水平坐标强制整数")]
+        // public KeyCode keyGridMode = KeyCode.Keypad7;
+
+        // [Name("吸附到某一物品上")]
+        // [Description("吸附到物品同一位置，同一旋转角")]
+        // public KeyCode keySnapItemXZ = KeyCode.Keypad8;
+
+        // [Name("高度叠叠乐")]
+        // [Description("配合吸附，实现堆叠")]
+        // public KeyCode keyYCollisionStack = KeyCode.Keypad9;
+
+        // [Name("坐标/旋转切换")]
+        // [Description("锁定坐标开始旋转物品")]
+        // public KeyCode keyCoordRotateSwitch = KeyCode.Keypad0;
+
+        // [Name("旋转归零")]
+        // [Description("旋转角归零")]
+        // public KeyCode keyResetRotateZero = KeyCode.KeypadPeriod;
+
+        // //==================== XYZ微调 ====================
+
+        // [Section("XYZ微调")]
+
+        // [Name("启用XYZ微调")]
+        // public bool enableXYZAdjust = false;
+
+        // [Name("X+")]
+        // public KeyCode keyXPlus = KeyCode.Keypad1;
+
+        // [Name("X-")]
+        // public KeyCode keyXMinus = KeyCode.Keypad4;
+
+        // [Name("Y+")]
+        // public KeyCode keyYPlus = KeyCode.Keypad2;
+
+        // [Name("Y-")]
+        // public KeyCode keyYMinus = KeyCode.Keypad5;
+
+        // [Name("Z+")]
+        // public KeyCode keyZPlus = KeyCode.Keypad3;
+
+        // [Name("Z-")]
+        // public KeyCode keyZMinus = KeyCode.Keypad6;
+        //==================== Master Toggle ====================
+
+        [Section("Master Toggle")]
+
+        [Name("Enable Anywhere Placement")]
+        [Description("Unrestricted item placement anywhere")]
         public bool enableAnyPlace = true;
 
-        //==================== Layer 2: Fine Placement ====================
+        //==================== Tier 2: Fine Placement ====================
+
         [Section("Fine Placement")]
 
         [Name("Enable Fine Placement Mode")]
-        [Description("Enable advanced placement features such as HUD display, rotation control, and precise adjustments")]
-        public bool enableFineMode = false;
+        [Description("Unlock advanced features (HUD, Rotation, Fine Adjustment)")]
+        public bool enableFineMode = true;
 
-        //==================== Basic Parameters ====================
-        [Section("Basic Parameters")]
+        //==================== Basic Settings ====================
+
+        [Section("Basic Settings")]
 
         [Name("Fine Movement Step")]
-        [Description("Step size used for each fine movement adjustment; smaller values allow more precise control")]
-        [Slider(0.1f, 1.0f, 10)]
-        public float fineMoveStep = 0.2f;
+        [Slider(0.01f, 1f, 100, NumberFormat = "{0:F2}")]
+        [Description("Distance moved per key press")]
+        public float fineMoveStep = 0.1f;
 
-        [Name("Rotation Division Count")]
-        [Description("Number of equal segments for rotation; higher values result in finer rotation increments")]
-        [Slider(1, 12, 1)]
-        public int rotateDivide = 4;
+        [Name("Rotation Angle Step")]
+        [Slider(0, 360)]
+        [Description("Angle rotated per key press")]
+        public int rotateDivide = 30;
+
+        //==================== Visual Aids ====================
+
+        [Section("Visual Aids")]
+
+        [Name("Enable Item Axis Lines")]
+        [Description("Select axis display mode")]
+        [Choice("Disabled", "World XYZ", "Local Item XYZ")]
+        public int axisDisplayMode = 0;
+
+        [Name("Grid Display Mode")]
+        [Description("Show placement grid")]
+        [Choice("Disabled", "Always On", "Grid Mode Only")]
+        public int gridDisplayMode = 2;
 
         //==================== HUD ====================
+
         [Section("HUD Settings")]
 
         [Name("HUD Horizontal Offset (X)")]
-        [Description("Adjust the horizontal position of the HUD on screen")]
-        [Slider(-2000, 2000)]
-        public int hudOffsetX = 0;
+        [Slider(-500, 500)]
+        public int hudOffsetX = -400;
 
         [Name("HUD Vertical Offset (Y)")]
-        [Description("Adjust the vertical position of the HUD on screen")]
-        [Slider(-600, 600)]
-        public int hudOffsetY = 0;
+        [Slider(-400, 400)]
+        public int hudOffsetY = 200;
 
-        //==================== Mode Keys ====================
-        [Section("Mode Toggle Keys")]
+        //==================== Item Info ====================
+
+        [Section("Item Info")]
+
+        [Name("Show Item Info")]
+        [Description("Display position and rotation info")]
+        public bool enablePlacementInfo = true;
+
+        [Name("Info X Offset")]
+        [Slider(0, 2000)]
+        [Description("Horizontal offset from bottom-right corner")]
+        public int infoOffsetX = 0;
+
+        [Name("Info Y Offset")]
+        [Slider(0, 1000)]
+        [Description("Vertical offset from bottom-right corner")]
+        public int infoOffsetY = 0;
+
+        //==================== Mode Hotkeys ====================
+
+        [Section("Mode Hotkeys")]
 
         [Name("Grid Placement")]
-        [Description("Toggle grid-based placement mode for snapping objects to a grid")]
+        [Description("Snap position to integer grid coordinates")]
         public KeyCode keyGridMode = KeyCode.Keypad7;
 
-        [Name("Snap to Item (XZ)")]
-        [Description("Snap the current object to the surface of another object along the XZ plane")]
+        [Name("Snap to Item")]
+        [Description("Snap position & rotation to target item")]
         public KeyCode keySnapItemXZ = KeyCode.Keypad8;
 
-        [Name("Vertical Stack (Y Collision)")]
-        [Description("Enable stacking objects vertically based on collision along the Y-axis")]
+        [Name("Vertical Stacking")]
+        [Description("Stack items vertically on top of each other")]
         public KeyCode keyYCollisionStack = KeyCode.Keypad9;
 
-        [Name("Coordinate/Rotation Toggle")]
-        [Description("Switch between coordinate adjustment mode and rotation adjustment mode")]
-        public KeyCode keyCoordRotateSwitch = KeyCode.KeypadDivide;
+        [Name("Coord / Rotate Switch")]
+        [Description("Lock position and enable rotation mode")]
+        public KeyCode keyCoordRotateSwitch = KeyCode.Keypad0;
 
         [Name("Reset Rotation")]
-        [Description("Reset the object's rotation back to zero")]
-        public KeyCode keyResetRotateZero = KeyCode.Keypad0;
+        [Description("Reset rotation to zero")]
+        public KeyCode keyResetRotateZero = KeyCode.KeypadPeriod;
 
         //==================== XYZ Fine Adjustment ====================
+
         [Section("XYZ Fine Adjustment")]
 
         [Name("Enable XYZ Adjustment")]
-        [Description("Allow manual fine-tuning of object position along X, Y, and Z axes using hotkeys")]
         public bool enableXYZAdjust = false;
 
         [Name("X+")]
-        [Description("Move the object slightly in the positive X direction")]
         public KeyCode keyXPlus = KeyCode.Keypad1;
 
         [Name("X-")]
-        [Description("Move the object slightly in the negative X direction")]
-        public KeyCode keyXMinus = KeyCode.Keypad2;
+        public KeyCode keyXMinus = KeyCode.Keypad4;
 
         [Name("Y+")]
-        [Description("Move the object slightly upward along the Y axis")]
-        public KeyCode keyYPlus = KeyCode.Keypad3;
+        public KeyCode keyYPlus = KeyCode.Keypad2;
 
         [Name("Y-")]
-        [Description("Move the object slightly downward along the Y axis")]
-        public KeyCode keyYMinus = KeyCode.Keypad4;
+        public KeyCode keyYMinus = KeyCode.Keypad5;
 
         [Name("Z+")]
-        [Description("Move the object slightly forward along the Z axis")]
-        public KeyCode keyZPlus = KeyCode.Keypad5;
+        public KeyCode keyZPlus = KeyCode.Keypad3;
 
         [Name("Z-")]
-        [Description("Move the object slightly backward along the Z axis")]
         public KeyCode keyZMinus = KeyCode.Keypad6;
 
         //==================== 动态折叠逻辑 ====================
@@ -109,45 +261,68 @@ namespace PlacingGeometrically
 
             if (field.Name == nameof(enableAnyPlace) ||
                 field.Name == nameof(enableFineMode) ||
+                field.Name == nameof(enablePlacementInfo) ||
                 field.Name == nameof(enableXYZAdjust))
             {
-                UpdateAllVisibility(enableAnyPlace);
+                RefreshAll();
             }
+        }
+
+        public void RefreshAll()
+        {
+            UpdateAllVisibility(enableAnyPlace);
         }
 
         public void UpdateAllVisibility(bool isEnable)
         {
-            // ===== 第一层：总开关 =====
+            //==================== 第一层：总开关 ====================
+
             if (!isEnable)
             {
                 SetAllFieldsInvisible();
                 return;
             }
 
-            // 总开关下，显示细致摆放开关
+            // 总开关下，只显示细致摆放
             SetFieldVisible(nameof(enableFineMode), true);
 
             bool fine = enableFineMode;
 
-            // ===== 第二层：细致摆放 =====
+            //==================== 第二层：细致摆放 ====================
+
+            // 基础参数
             SetFieldVisible(nameof(fineMoveStep), fine);
             SetFieldVisible(nameof(rotateDivide), fine);
 
+            // 辅助显示
+            SetFieldVisible(nameof(axisDisplayMode), fine);
+            SetFieldVisible(nameof(gridDisplayMode), fine);
+
+            // HUD
             SetFieldVisible(nameof(hudOffsetX), fine);
             SetFieldVisible(nameof(hudOffsetY), fine);
 
+            // 物品信息
+            SetFieldVisible(nameof(enablePlacementInfo), fine);
+
+            bool infoVisible = fine && enablePlacementInfo;
+
+            SetFieldVisible(nameof(infoOffsetX), infoVisible);
+            SetFieldVisible(nameof(infoOffsetY), infoVisible);
+
+            // 模式按键
             SetFieldVisible(nameof(keyGridMode), fine);
             SetFieldVisible(nameof(keySnapItemXZ), fine);
             SetFieldVisible(nameof(keyYCollisionStack), fine);
             SetFieldVisible(nameof(keyCoordRotateSwitch), fine);
             SetFieldVisible(nameof(keyResetRotateZero), fine);
 
-            // ===== 第三层：XYZ开关 =====
+            // XYZ微调
             SetFieldVisible(nameof(enableXYZAdjust), fine);
 
             bool xyz = fine && enableXYZAdjust;
 
-            // ===== 第四层：XYZ按键 =====
+            // XYZ按键
             SetFieldVisible(nameof(keyXPlus), xyz);
             SetFieldVisible(nameof(keyXMinus), xyz);
             SetFieldVisible(nameof(keyYPlus), xyz);
@@ -160,18 +335,31 @@ namespace PlacingGeometrically
         {
             SetFieldVisible(nameof(enableFineMode), false);
 
+            // 基础参数
             SetFieldVisible(nameof(fineMoveStep), false);
             SetFieldVisible(nameof(rotateDivide), false);
 
+            // 辅助显示
+            SetFieldVisible(nameof(axisDisplayMode), false);
+            SetFieldVisible(nameof(gridDisplayMode), false);
+
+            // HUD
             SetFieldVisible(nameof(hudOffsetX), false);
             SetFieldVisible(nameof(hudOffsetY), false);
 
+            // 物品信息
+            SetFieldVisible(nameof(enablePlacementInfo), false);
+            SetFieldVisible(nameof(infoOffsetX), false);
+            SetFieldVisible(nameof(infoOffsetY), false);
+
+            // 模式按键
             SetFieldVisible(nameof(keyGridMode), false);
             SetFieldVisible(nameof(keySnapItemXZ), false);
             SetFieldVisible(nameof(keyYCollisionStack), false);
             SetFieldVisible(nameof(keyCoordRotateSwitch), false);
             SetFieldVisible(nameof(keyResetRotateZero), false);
 
+            // XYZ
             SetFieldVisible(nameof(enableXYZAdjust), false);
 
             SetFieldVisible(nameof(keyXPlus), false);
@@ -185,7 +373,7 @@ namespace PlacingGeometrically
         protected override void OnConfirm()
         {
             base.OnConfirm();
-            UpdateAllVisibility(enableAnyPlace);
+            RefreshAll();
         }
     }
 
@@ -196,9 +384,11 @@ namespace PlacingGeometrically
         public static void OnLoad()
         {
             options = new PlacingGeometricallySettings();
+
             // options.AddToModSettings("几何学放置");
-            options.AddToModSettings("Placing Geometrically");
-            options.UpdateAllVisibility(options.enableAnyPlace);
+            options.AddToModSettings("Placing Geometrically v1.1");
+
+            options.RefreshAll();
         }
     }
 }
