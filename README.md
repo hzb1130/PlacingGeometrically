@@ -1,5 +1,7 @@
 # Placing Geometrically / 几何学摆放
 
+中文版在release的压缩包里
+
 ## Overview / 简介
 
 A variant of the original placement mod that adds grid-based and more structured placement options, while keeping full free-placement capability.
