@@ -5,7 +5,7 @@ using Il2Cpp;
 using System.Collections.Generic;
 using Il2CppTLD.Placement;
 
-[assembly: MelonInfo(typeof(PlacingGeometrically.PlacingGeometricallyMain), "Placing Geometrically", "1.1.0", "hzb1130")]
+[assembly: MelonInfo(typeof(PlacingGeometrically.PlacingGeometricallyMain), "Placing Geometrically", "1.2.0", "hzb1130")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 
 namespace PlacingGeometrically
@@ -19,10 +19,12 @@ namespace PlacingGeometrically
         private bool snapXZOn = false;
         private bool yCollisionOn = false;
         private bool coordRotateSwitchOn = false;
+        private bool coordPositionSwitchOn = false;
         private Vector3 _extraOffset = Vector3.zero;
         private Vector3 _extraRotation = Vector3.zero;
         private Vector3 _lockedPosition = Vector3.zero;
         private Vector3 _rotationCancel = Vector3.zero;
+        private Quaternion _lockedRotation = Quaternion.identity;
         private PlayerManager? playerManager = null;
         private LineRenderer? _lineX;
         private LineRenderer? _lineY;
@@ -51,7 +53,6 @@ namespace PlacingGeometrically
 
             UpdateGridPlane();
 
-            // 原有逻辑
             if (!Settings.options.enableFineMode && paHUD != null)
             {
                 DestroyPlacingHUD();
@@ -59,24 +60,41 @@ namespace PlacingGeometrically
             }
             if (paHUD == null || !Settings.options.enableFineMode) return;
 
+            // ==========单按键循环切换==========
             if (Input.GetKeyDown(Settings.options.keyGridMode))
             {
-                gridModeOn = !gridModeOn;
-                if (gridModeOn) snapXZOn = false;
+                if (!gridModeOn && !snapXZOn)
+                {
+                    // 状态：普通 → 网格
+                    gridModeOn = true;
+                    snapXZOn = false;
+                }
+                else if (gridModeOn)
+                {
+                    // 状态：网格 → 吸附
+                    gridModeOn = false;
+                    snapXZOn = true;
+                }
+                else if (snapXZOn)
+                {
+                    // 状态：吸附 → 普通
+                    gridModeOn = false;
+                    snapXZOn = false;
+                }
             }
-            if (Input.GetKeyDown(Settings.options.keySnapItemXZ))
-            {
-                snapXZOn = !snapXZOn;
-                if (snapXZOn) gridModeOn = false;
-            }
+
+            // 其余功能按键逻辑不变
             if (Input.GetKeyDown(Settings.options.keyYCollisionStack))
                 yCollisionOn = !yCollisionOn;
             if (Input.GetKeyDown(Settings.options.keyCoordRotateSwitch))
             {
-                coordRotateSwitchOn = !coordRotateSwitchOn;
-                if (coordRotateSwitchOn && playerManager != null)
+                GameObject? obj = playerManager?.GetObjectToPlace();
+
+                // 普通 -> 旋转
+                if (!coordRotateSwitchOn && !coordPositionSwitchOn)
                 {
-                    GameObject obj = playerManager.GetObjectToPlace();
+                    coordRotateSwitchOn = true;
+
                     if (obj != null)
                     {
                         _lockedPosition = obj.transform.position;
@@ -84,31 +102,64 @@ namespace PlacingGeometrically
                         _rotationCancel = Vector3.zero;
                     }
                 }
+                // 旋转 -> 位置
+                else if (coordRotateSwitchOn)
+                {
+                    coordRotateSwitchOn = false;
+                    coordPositionSwitchOn = true;
+
+                    if (obj != null)
+                    {
+                        _lockedRotation = obj.transform.rotation;
+                        _lockedPosition = obj.transform.position;
+                    }
+                }
+                // 位置 -> 普通
+                else
+                {
+                    coordPositionSwitchOn = false;
+                }
             }
 
             var keys = new List<KeyCode>(buttonMap.Keys);
             foreach (var key in keys)
             {
                 if (!buttonMap.TryGetValue(key, out var button)) continue;
-                Color targetColor;
+                Color targetColor = Color.white;
+
                 bool isModeKey = key == Settings.options.keyGridMode ||
-                                 key == Settings.options.keySnapItemXZ ||
-                                 key == Settings.options.keyYCollisionStack ||
-                                 key == Settings.options.keyCoordRotateSwitch;
+                                key == Settings.options.keyYCollisionStack ||
+                                key == Settings.options.keyCoordRotateSwitch;
 
                 if (isModeKey)
                 {
-                    bool state = false;
-                    if (key == Settings.options.keyGridMode) state = gridModeOn;
-                    else if (key == Settings.options.keySnapItemXZ) state = snapXZOn;
-                    else if (key == Settings.options.keyYCollisionStack) state = yCollisionOn;
-                    else if (key == Settings.options.keyCoordRotateSwitch) state = coordRotateSwitchOn;
-                    targetColor = state ? new Color32(255, 140, 0, 255) : Color.white;
+                    if (key == Settings.options.keyGridMode)
+                    {
+                        if (gridModeOn)
+                            targetColor = new Color32(255, 140, 0, 255);      // 橙：网格
+                        else if (snapXZOn)
+                            targetColor = new Color32(0, 220, 220, 255);      // 青：吸附
+                    }
+                    else if (key == Settings.options.keyYCollisionStack)
+                    {
+                        if (yCollisionOn)
+                            targetColor = new Color32(255, 140, 0, 255);
+                    }
+                    else if (key == Settings.options.keyCoordRotateSwitch)
+                    {
+                        if (coordRotateSwitchOn)
+                            targetColor = new Color32(255, 140, 0, 255);      // 橙：旋转模式
+                        else if (coordPositionSwitchOn)
+                            targetColor = new Color32(0, 220, 220, 255);      // 青：位置模式
+                    }
                 }
                 else
                 {
-                    targetColor = Input.GetKey(key) ? new Color32(255, 140, 0, 255) : Color.white;
+                    targetColor = Input.GetKey(key)
+                        ? new Color32(255, 140, 0, 255)
+                        : Color.white;
                 }
+
                 button.m_KeyboardButtonLabel.color = targetColor;
                 button.m_KeyboardButtonSprite.color = targetColor;
             }
@@ -151,9 +202,11 @@ namespace PlacingGeometrically
             // _placementInfo =
             //     $"位置 X:{FormatSigned(pos.x)}  Y:{FormatSigned(pos.y)}  Z:{FormatSigned(pos.z)}\n" +
             //     $"旋转 X:{FormatSigned(rot.x)}  Y:{FormatSigned(rot.y)}  Z:{FormatSigned(rot.z)}";
+            //ENG
             _placementInfo =
                 $"Position X:{FormatSigned(pos.x)}  Y:{FormatSigned(pos.y)}  Z:{FormatSigned(pos.z)}\n" +
                 $"Rotation X:{FormatSigned(rot.x)}  Y:{FormatSigned(rot.y)}  Z:{FormatSigned(rot.z)}";
+
 
             Vector2 size = _placementInfoStyle.CalcSize(new GUIContent(_placementInfo));
 
@@ -464,7 +517,7 @@ namespace PlacingGeometrically
             if (paHUD != null) return;
             if (!Settings.options.enableFineMode)
             {
-                gridModeOn = false; snapXZOn = false; yCollisionOn = false; coordRotateSwitchOn = false;
+                gridModeOn = false; snapXZOn = false; yCollisionOn = false; coordRotateSwitchOn = false;coordPositionSwitchOn = false;
                 return;
             }
 
@@ -505,26 +558,24 @@ namespace PlacingGeometrically
                 if (!buttonMap.ContainsKey(keyCode)) buttonMap.Add(keyCode, button);
             }
 
-            // AddButton("网格放置", Settings.options.keyGridMode, 0, 0);
-            // AddButton("吸附摆放", Settings.options.keySnapItemXZ, 0, 1);
-            // AddButton("高度叠放", Settings.options.keyYCollisionStack, 1, 0);
-            // AddButton("坐标/旋转切换", Settings.options.keyCoordRotateSwitch, 1, 1);
-            // AddButton("归零旋转", Settings.options.keyResetRotateZero, 2, 0);
-
-            AddButton("Grid", Settings.options.keyGridMode, 0, 0);
-            AddButton("Snap", Settings.options.keySnapItemXZ, 0, 1);
-            AddButton("Vertical Stacking", Settings.options.keyYCollisionStack, 1, 0);
-            AddButton("Coordinate/Rotation", Settings.options.keyCoordRotateSwitch, 1, 1);
-            AddButton("Reset Rotation", Settings.options.keyResetRotateZero, 2, 0);
+            // AddButton("网格/吸附", Settings.options.keyGridMode, 0, 0);
+            // AddButton("高度叠放", Settings.options.keyYCollisionStack, 0, 1);
+            // AddButton("锁定 坐标/旋转", Settings.options.keyCoordRotateSwitch, 1, 0);
+            // AddButton("归零旋转", Settings.options.keyResetRotateZero, 1, 1);
+            //ENG
+            AddButton("Grid / Snap", Settings.options.keyGridMode, 0, 0);
+            AddButton("Vertical Stack", Settings.options.keyYCollisionStack, 0, 1);
+            AddButton("Lock Pos / Rot", Settings.options.keyCoordRotateSwitch, 1, 0);
+            AddButton("Reset Rotation", Settings.options.keyResetRotateZero, 1, 1);
 
             if (Settings.options.enableXYZAdjust)
             {
-                AddButton("X+", Settings.options.keyXPlus, 3, 0);
-                AddButton("X-", Settings.options.keyXMinus, 3, 1);
-                AddButton("Y+", Settings.options.keyYPlus, 4, 0);
-                AddButton("Y-", Settings.options.keyYMinus, 4, 1);
-                AddButton("Z+", Settings.options.keyZPlus, 5, 0);
-                AddButton("Z-", Settings.options.keyZMinus, 5, 1);
+                AddButton("X+", Settings.options.keyXPlus, 2, 0);
+                AddButton("X-", Settings.options.keyXMinus, 2, 1);
+                AddButton("Y+", Settings.options.keyYPlus, 3, 0);
+                AddButton("Y-", Settings.options.keyYMinus, 3, 1);
+                AddButton("Z+", Settings.options.keyZPlus, 4, 0);
+                AddButton("Z-", Settings.options.keyZMinus, 4, 1);
             }
         }
 
@@ -532,7 +583,7 @@ namespace PlacingGeometrically
         {
             if (paHUD != null) { UnityEngine.Object.Destroy(paHUD); paHUD = null; buttonMap.Clear(); }
             _extraOffset = Vector3.zero; _extraRotation = Vector3.zero; _lockedPosition = Vector3.zero; _rotationCancel = Vector3.zero;
-            playerManager = null; coordRotateSwitchOn = false;
+            playerManager = null; coordRotateSwitchOn = false;coordPositionSwitchOn = false;_lockedRotation = Quaternion.identity;
             // 隐藏或销毁所有三轴
             if (_lineX != null) _lineX.gameObject.SetActive(false);
             if (_lineY != null) _lineY.gameObject.SetActive(false);
@@ -611,353 +662,271 @@ namespace PlacingGeometrically
             private static void Postfix() { Melon<PlacingGeometricallyMain>.Instance.DestroyPlacingHUD(); }
         }
 
-        // [HarmonyPatch(typeof(PlayerManager), nameof(PlayerManager.DoPositionCheck))]
-        // internal static class Patch_DoPositionCheck
-        // {
-        //     private static void Postfix(PlayerManager __instance, ref MeshLocationCategory __result)
-        //     {
-        //         if (!Settings.options.enableAnyPlace) return;
-        //         __result = MeshLocationCategory.Valid;
-        //         if (!Settings.options.enableFineMode)  return;                
-        //         var mod = Melon<PlacingGeometricallyMain>.Instance;
-        //         GameObject obj = __instance.GetObjectToPlace();
-        //         if (obj == null) return;
-
-        //         float step = 360f / Settings.options.rotateDivide;
-        //         float moveStep = Settings.options.fineMoveStep;
-
-        //         if (Input.GetKeyDown(Settings.options.keyResetRotateZero))
-        //         {
-        //             // 坐标旋转模式
-        //             if (mod.coordRotateSwitchOn)
-        //             {
-        //                 mod._rotationCancel = mod._extraRotation;
-        //             }
-        //             // 吸附模式
-        //             else if (mod.snapXZOn)
-        //             {
-        //                 vp_FPSCamera cam = GameManager.GetVpFPSCamera();
-
-        //                 Ray ray = new Ray(cam.transform.position,cam.transform.forward);
-
-        //                 RaycastHit hit;
-
-        //                 int layerMask =
-        //                     PlayerManager.GetLayerMaskForPlaceMeshRaycast();
-
-        //                 layerMask |= 1 << vp_Layer.Gear;
-
-        //                 GearItem? gear = null;
-
-        //                 if (Physics.Raycast(ray, out hit, 6f, layerMask))
-        //                     gear = hit.collider.GetComponentInParent<GearItem>();
-
-        //                 if (gear == null)
-        //                     gear = FindNearbyGear(obj.transform.position);
-
-        //                 // 用被吸附物体角度作为抵消基准
-        //                 if (gear != null)
-        //                 {
-        //                     mod._rotationCancel = gear.transform.eulerAngles;
-        //                     obj.transform.rotation = gear.transform.rotation;
-
-        //                 }
-        //                 else
-        //                 {
-        //                     obj.transform.position += mod._extraOffset;
-        //                 }
-                            
-        //             }
-        //             // 普通模式
-        //             else
-        //             {
-        //                 mod._rotationCancel =
-        //                     obj.transform.eulerAngles;
-        //             }
-        //         }
-
-        //         bool xyzEnabled = Settings.options.enableXYZAdjust;
-
-        //         if (mod.coordRotateSwitchOn)
-        //         {
-        //             obj.transform.position = mod._lockedPosition;
-        //             if (xyzEnabled)
-        //             {
-        //                 if (Input.GetKeyDown(Settings.options.keyXPlus)) mod._extraRotation.x += step;
-        //                 if (Input.GetKeyDown(Settings.options.keyXMinus)) mod._extraRotation.x -= step;
-        //                 if (Input.GetKeyDown(Settings.options.keyYPlus)) mod._extraRotation.y += step;
-        //                 if (Input.GetKeyDown(Settings.options.keyYMinus)) mod._extraRotation.y -= step;
-        //                 if (Input.GetKeyDown(Settings.options.keyZPlus)) mod._extraRotation.z += step;
-        //                 if (Input.GetKeyDown(Settings.options.keyZMinus)) mod._extraRotation.z -= step;
-        //             }
-        //             obj.transform.rotation = Quaternion.Euler(mod._extraRotation);
-        //             if (mod._rotationCancel != Vector3.zero)
-        //             {
-        //                 Quaternion cancelRot = Quaternion.Euler(mod._rotationCancel);
-        //                 obj.transform.rotation = Quaternion.Inverse(cancelRot) * obj.transform.rotation;
-        //             }
-        //             return;
-        //         }
-
-        //         if (xyzEnabled)
-        //         {
-        //             if (Input.GetKeyDown(Settings.options.keyXPlus)) mod._extraOffset.x += moveStep;
-        //             if (Input.GetKeyDown(Settings.options.keyXMinus)) mod._extraOffset.x -= moveStep;
-        //             if (Input.GetKeyDown(Settings.options.keyYPlus)) mod._extraOffset.y += moveStep;
-        //             if (Input.GetKeyDown(Settings.options.keyYMinus)) mod._extraOffset.y -= moveStep;
-        //             if (Input.GetKeyDown(Settings.options.keyZPlus)) mod._extraOffset.z += moveStep;
-        //             if (Input.GetKeyDown(Settings.options.keyZMinus)) mod._extraOffset.z -= moveStep;
-        //         }
-
-        //         if (mod.gridModeOn)
-        //         {
-        //             Vector3 pos = obj.transform.position;
-        //             pos.x = Mathf.Round(pos.x) + mod._extraOffset.x;
-        //             pos.z = Mathf.Round(pos.z) + mod._extraOffset.z;
-        //             pos.y += mod._extraOffset.y;
-        //             obj.transform.position = pos;
-        //         }
-        //         else if (mod.snapXZOn)
-        //         {
-        //             vp_FPSCamera cam = GameManager.GetVpFPSCamera();
-        //             Ray ray = new Ray(cam.transform.position, cam.transform.forward);
-        //             RaycastHit hit;
-        //             int layerMask = PlayerManager.GetLayerMaskForPlaceMeshRaycast();
-        //             layerMask |= 1 << vp_Layer.Gear;
-        //             GearItem? gear = null;
-        //             if (Physics.Raycast(ray, out hit, 6f, layerMask)) gear = hit.collider.GetComponentInParent<GearItem>();
-        //             if (gear == null) gear = FindNearbyGear(obj.transform.position);
-        //             if (gear != null){obj.transform.position = gear.transform.position + mod._extraOffset;obj.transform.rotation = gear.transform.rotation;}
-        //         }
-        //         else
-        //         {
-        //             obj.transform.position += mod._extraOffset;
-        //         }
-
-        //         if (mod.yCollisionOn)
-        //         {
-        //             vp_FPSCamera cam = GameManager.GetVpFPSCamera();
-        //             Ray ray = new Ray(cam.transform.position, cam.transform.forward);
-        //             RaycastHit hit;
-        //             int layerMask = 1 << vp_Layer.Gear;
-        //             GearItem? gear = null;
-        //             if (Physics.Raycast(ray, out hit, 6f, layerMask)) gear = hit.collider.GetComponentInParent<GearItem>();
-        //             if (gear == null) gear = FindNearbyGear(obj.transform.position);
-        //             if (gear != null && gear.gameObject != obj)
-        //             {
-        //                 Collider c = gear.GetComponentInChildren<Collider>();
-        //                 if (c != null) { Vector3 p = obj.transform.position; obj.transform.position = new Vector3(p.x, c.bounds.max.y + mod._extraOffset.y, p.z); }
-        //             }
-        //         }
-
-        //         if (mod._rotationCancel != Vector3.zero)
-        //         {
-        //             Quaternion currentRot = obj.transform.rotation;
-        //             Quaternion cancelRot = Quaternion.Euler(mod._rotationCancel);
-        //             obj.transform.rotation = Quaternion.Inverse(cancelRot) * currentRot;
-        //         }
-        //     }
-        // }
-
-[HarmonyPatch(typeof(PlayerManager), nameof(PlayerManager.DoPositionCheck))]
-internal static class Patch_DoPositionCheck
-{
-    private static void Postfix(PlayerManager __instance, ref MeshLocationCategory __result)
-    {
-        if (!Settings.options.enableAnyPlace) return;
-
-        __result = MeshLocationCategory.Valid;
-
-        if (!Settings.options.enableFineMode) return;
-
-        var mod = Melon<PlacingGeometricallyMain>.Instance;
-        GameObject obj = __instance.GetObjectToPlace();
-
-        if (obj == null) return;
-
-        float rotateStep = Settings.options.rotateDivide;
-        float moveStep = Settings.options.fineMoveStep;
-        bool xyzEnabled = Settings.options.enableXYZAdjust;
-        bool resetPressed = Input.GetKeyDown(Settings.options.keyResetRotateZero);
-
-        // ==================================================
-        // 坐标旋转模式：独立流程
-        // ==================================================
-
-        if (mod.coordRotateSwitchOn)
+        [HarmonyPatch(typeof(PlayerManager), nameof(PlayerManager.DoPositionCheck))]
+        internal static class Patch_DoPositionCheck
         {
-            if (resetPressed) {mod._rotationCancel = mod._extraRotation; }
-
-            if (xyzEnabled)
+            private static void Postfix(PlayerManager __instance, ref MeshLocationCategory __result)
             {
-                if (Input.GetKeyDown(Settings.options.keyXPlus)) mod._extraRotation.x += rotateStep;
-                if (Input.GetKeyDown(Settings.options.keyXMinus)) mod._extraRotation.x -= rotateStep;
-                if (Input.GetKeyDown(Settings.options.keyYPlus)) mod._extraRotation.y += rotateStep;
-                if (Input.GetKeyDown(Settings.options.keyYMinus)) mod._extraRotation.y -= rotateStep;
-                if (Input.GetKeyDown(Settings.options.keyZPlus)) mod._extraRotation.z += rotateStep;
-                if (Input.GetKeyDown(Settings.options.keyZMinus)) mod._extraRotation.z -= rotateStep;
-            }
+                if (!Settings.options.enableAnyPlace) return;
 
-            Quaternion coordRotation = Quaternion.Euler(mod._extraRotation);
+                __result = MeshLocationCategory.Valid;
 
-            if (mod._rotationCancel != Vector3.zero)
-            {
-                Quaternion cancelRot = Quaternion.Euler(mod._rotationCancel);
-                coordRotation = Quaternion.Inverse(cancelRot) * coordRotation;
-            }
+                if (!Settings.options.enableFineMode) return;
 
-            obj.transform.position = mod._lockedPosition;
-            obj.transform.rotation = coordRotation;
-            return;
-        }
+                var mod = Melon<PlacingGeometricallyMain>.Instance;
+                GameObject obj = __instance.GetObjectToPlace();
 
-        // ==================================================
-        // 根据当前模式预扫描 Gear
-        // ==================================================
+                if (obj == null) return;
 
-        GearItem? snapGear = null;
-        GearItem? stackRayGear = null;
+                float rotateStep = Settings.options.rotateDivide;
+                float moveStep = Settings.options.fineMoveStep;
+                bool xyzEnabled = Settings.options.enableXYZAdjust;
+                bool resetPressed = Input.GetKeyDown(Settings.options.keyResetRotateZero);
 
-        if (mod.snapXZOn)
-        {
-            int snapLayerMask = PlayerManager.GetLayerMaskForPlaceMeshRaycast();
-            snapLayerMask |= 1 << vp_Layer.Gear;
-            snapGear = FindGearByCameraOrNearby(obj.transform.position, snapLayerMask);
-        }
+                // ==================================================
+                // 坐标旋转模式：独立流程
+                // ==================================================
 
-        if (mod.yCollisionOn)
-        {
-            int stackLayerMask = 1 << vp_Layer.Gear;
-            stackRayGear = FindGearByCamera(stackLayerMask);
-        }
-
-        // ==================================================
-        // Reset
-        // ==================================================
-
-        if (resetPressed)
-        {
-            if (mod.snapXZOn)
-            {
-                if (snapGear != null)
+                if (mod.coordRotateSwitchOn)
                 {
-                    mod._rotationCancel = snapGear.transform.eulerAngles;
-                    obj.transform.rotation = snapGear.transform.rotation;
+                    if (resetPressed) {mod._rotationCancel = mod._extraRotation; }
+
+                    if (xyzEnabled)
+                    {
+                        if (Input.GetKeyDown(Settings.options.keyXPlus)) mod._extraRotation.x += rotateStep;
+                        if (Input.GetKeyDown(Settings.options.keyXMinus)) mod._extraRotation.x -= rotateStep;
+                        if (Input.GetKeyDown(Settings.options.keyYPlus)) mod._extraRotation.y += rotateStep;
+                        if (Input.GetKeyDown(Settings.options.keyYMinus)) mod._extraRotation.y -= rotateStep;
+                        if (Input.GetKeyDown(Settings.options.keyZPlus)) mod._extraRotation.z += rotateStep;
+                        if (Input.GetKeyDown(Settings.options.keyZMinus)) mod._extraRotation.z -= rotateStep;
+                    }
+
+                    Quaternion coordRotation = Quaternion.Euler(mod._extraRotation);
+
+                    if (mod._rotationCancel != Vector3.zero)
+                    {
+                        Quaternion cancelRot = Quaternion.Euler(mod._rotationCancel);
+                        coordRotation = Quaternion.Inverse(cancelRot) * coordRotation;
+                    }
+
+                    obj.transform.position = mod._lockedPosition;
+                    obj.transform.rotation = coordRotation;
+                    return;
                 }
+
+                if (mod.coordPositionSwitchOn)
+                {
+                    if (resetPressed)
+                    {
+                        mod._lockedPosition = obj.transform.position;
+                    }
+
+                    if (xyzEnabled)
+                    {
+                        if (Input.GetKeyDown(Settings.options.keyXPlus))
+                            mod._lockedPosition.x += moveStep;
+
+                        if (Input.GetKeyDown(Settings.options.keyXMinus))
+                            mod._lockedPosition.x -= moveStep;
+
+                        if (Input.GetKeyDown(Settings.options.keyYPlus))
+                            mod._lockedPosition.y += moveStep;
+
+                        if (Input.GetKeyDown(Settings.options.keyYMinus))
+                            mod._lockedPosition.y -= moveStep;
+
+                        if (Input.GetKeyDown(Settings.options.keyZPlus))
+                            mod._lockedPosition.z += moveStep;
+
+                        if (Input.GetKeyDown(Settings.options.keyZMinus))
+                            mod._lockedPosition.z -= moveStep;
+                    }
+
+                    obj.transform.position = mod._lockedPosition;
+                    obj.transform.rotation = mod._lockedRotation;
+
+                    return;
+                }
+
+                // ==================================================
+                // 根据当前模式预扫描 Gear
+                // ==================================================
+
+                GearItem? snapGear = null;
+                GearItem? stackRayGear = null;
+
+                if (mod.snapXZOn)
+                {
+                    int snapLayerMask = PlayerManager.GetLayerMaskForPlaceMeshRaycast();
+                    snapLayerMask |= 1 << vp_Layer.Gear;
+                    snapGear = FindGearByCameraOrNearby(obj.transform.position, snapLayerMask);
+                }
+
+                if (mod.yCollisionOn)
+                {
+                    int stackLayerMask = 1 << vp_Layer.Gear;
+                    stackRayGear = FindGearByCamera(stackLayerMask);
+                }
+
+                // ==================================================
+                // Reset
+                // ==================================================
+
+                if (resetPressed)
+                {
+                    if (mod.snapXZOn)
+                    {
+                        if (snapGear != null)
+                        {
+                            mod._rotationCancel = snapGear.transform.eulerAngles;
+                            obj.transform.rotation = snapGear.transform.rotation;
+                        }
+                    }
+                    else
+                    {
+                        mod._rotationCancel = obj.transform.eulerAngles;
+                    }
+                }
+
+                // ==================================================
+                // 移动输入
+                // ==================================================
+
+                if (xyzEnabled)
+                {
+                    if (Input.GetKeyDown(Settings.options.keyXPlus)) mod._extraOffset.x += moveStep;
+                    if (Input.GetKeyDown(Settings.options.keyXMinus)) mod._extraOffset.x -= moveStep;
+                    if (Input.GetKeyDown(Settings.options.keyYPlus)) mod._extraOffset.y += moveStep;
+                    if (Input.GetKeyDown(Settings.options.keyYMinus)) mod._extraOffset.y -= moveStep;
+                    if (Input.GetKeyDown(Settings.options.keyZPlus)) mod._extraOffset.z += moveStep;
+                    if (Input.GetKeyDown(Settings.options.keyZMinus)) mod._extraOffset.z -= moveStep;
+                }
+
+                // ==================================================
+                // 位置 / 旋转求解
+                // ==================================================
+
+                Vector3 targetPosition = obj.transform.position;
+                Quaternion targetRotation = obj.transform.rotation;
+
+                if (mod.gridModeOn)
+                {
+                    targetPosition.x = Mathf.Round(targetPosition.x) + mod._extraOffset.x;
+                    targetPosition.z = Mathf.Round(targetPosition.z) + mod._extraOffset.z;
+                    targetPosition.y += mod._extraOffset.y;
+                }
+                else if (mod.snapXZOn)
+                {
+                    if (snapGear != null)
+                    {
+                        targetPosition = snapGear.transform.position + mod._extraOffset;
+                        targetRotation = snapGear.transform.rotation;
+                    }
+                    else
+                    {
+                        // 吸附目标不存在时，退化为普通模式
+                        targetPosition += mod._extraOffset;
+                    }
+                }
+                else
+                {
+                    targetPosition += mod._extraOffset;
+                }
+
+                // ==================================================
+                // 高度叠放后处理
+                // ==================================================
+
+                if (mod.yCollisionOn)
+                {
+                    GearItem? stackGear = stackRayGear;
+
+                    if (stackGear == null)
+                        stackGear = FindNearbyGear(targetPosition);
+
+                    if (stackGear != null && stackGear.gameObject != obj)
+                    {
+                        bool found = false;
+
+                        // ==================================================
+                        // 1. 优先使用 PlacementHelper
+                        // ==================================================
+
+                        Collider[] colliders = stackGear.GetComponentsInChildren<Collider>(true);
+
+                        foreach (Collider col in colliders)
+                        {
+                            if (col == null)
+                                continue;
+
+                            if (!col.enabled)
+                                continue;
+
+                            if (col.name == "PlacementHelper")
+                            {
+                                targetPosition.y = col.bounds.max.y + mod._extraOffset.y;
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        // ==================================================
+                        // 2. 没有 PlacementHelper，则使用第一个 Renderer
+                        // ==================================================
+
+                        if (!found)
+                        {
+                            Renderer renderer = stackGear.GetComponentInChildren<Renderer>();
+
+                            if (renderer != null && renderer.enabled)
+                            {
+                                targetPosition.y = renderer.bounds.max.y + mod._extraOffset.y;
+                            }
+                        }
+                    }
+                }
+
+                // ==================================================
+                // 旋转抵消
+                // ==================================================
+
+                if (mod._rotationCancel != Vector3.zero)
+                {
+                    Quaternion cancelRot = Quaternion.Euler(mod._rotationCancel);
+                    targetRotation = Quaternion.Inverse(cancelRot) * targetRotation;
+                }
+
+                // ==================================================
+                // Apply
+                // ==================================================
+
+                obj.transform.position = targetPosition;
+                obj.transform.rotation = targetRotation;
             }
-            else
+
+            private static GearItem? FindGearByCamera(int layerMask, float distance = 6f)
             {
-                mod._rotationCancel = obj.transform.eulerAngles;
+                vp_FPSCamera cam = GameManager.GetVpFPSCamera();
+
+                if (cam == null) return null;
+
+                Ray ray = new Ray(cam.transform.position, cam.transform.forward);
+                RaycastHit hit;
+
+                if (!Physics.Raycast(ray, out hit, distance, layerMask)) return null;
+
+                return hit.collider.GetComponentInParent<GearItem>();
             }
-        }
 
-        // ==================================================
-        // 移动输入
-        // ==================================================
-
-        if (xyzEnabled)
-        {
-            if (Input.GetKeyDown(Settings.options.keyXPlus)) mod._extraOffset.x += moveStep;
-            if (Input.GetKeyDown(Settings.options.keyXMinus)) mod._extraOffset.x -= moveStep;
-            if (Input.GetKeyDown(Settings.options.keyYPlus)) mod._extraOffset.y += moveStep;
-            if (Input.GetKeyDown(Settings.options.keyYMinus)) mod._extraOffset.y -= moveStep;
-            if (Input.GetKeyDown(Settings.options.keyZPlus)) mod._extraOffset.z += moveStep;
-            if (Input.GetKeyDown(Settings.options.keyZMinus)) mod._extraOffset.z -= moveStep;
-        }
-
-        // ==================================================
-        // 位置 / 旋转求解
-        // ==================================================
-
-        Vector3 targetPosition = obj.transform.position;
-        Quaternion targetRotation = obj.transform.rotation;
-
-        if (mod.gridModeOn)
-        {
-            targetPosition.x = Mathf.Round(targetPosition.x) + mod._extraOffset.x;
-            targetPosition.z = Mathf.Round(targetPosition.z) + mod._extraOffset.z;
-            targetPosition.y += mod._extraOffset.y;
-        }
-        else if (mod.snapXZOn)
-        {
-            if (snapGear != null)
+            private static GearItem? FindGearByCameraOrNearby(Vector3 nearbyPosition, int layerMask, float distance = 6f, float nearbyRadius = 0.6f)
             {
-                targetPosition = snapGear.transform.position + mod._extraOffset;
-                targetRotation = snapGear.transform.rotation;
-            }
-            else
-            {
-                // 吸附目标不存在时，退化为普通模式
-                targetPosition += mod._extraOffset;
+                GearItem? gear = FindGearByCamera(layerMask, distance);
+
+                if (gear != null) return gear;
+
+                return FindNearbyGear(nearbyPosition, nearbyRadius);
             }
         }
-        else
-        {
-            targetPosition += mod._extraOffset;
-        }
-
-        // ==================================================
-        // 高度叠放后处理
-        // ==================================================
-
-        if (mod.yCollisionOn)
-        {
-            GearItem? stackGear = stackRayGear;
-
-            if (stackGear == null)
-                stackGear = FindNearbyGear(targetPosition);
-
-            if (stackGear != null && stackGear.gameObject != obj)
-            {
-                Collider c = stackGear.GetComponentInChildren<Collider>();
-                if (c != null)
-                    targetPosition.y = c.bounds.max.y + mod._extraOffset.y;
-                    
-
-            }
-        }
-
-        // ==================================================
-        // 旋转抵消
-        // ==================================================
-
-        if (mod._rotationCancel != Vector3.zero)
-        {
-            Quaternion cancelRot = Quaternion.Euler(mod._rotationCancel);
-            targetRotation = Quaternion.Inverse(cancelRot) * targetRotation;
-        }
-
-        // ==================================================
-        // Apply
-        // ==================================================
-
-        obj.transform.position = targetPosition;
-        obj.transform.rotation = targetRotation;
-    }
-
-    private static GearItem? FindGearByCamera(int layerMask, float distance = 6f)
-    {
-        vp_FPSCamera cam = GameManager.GetVpFPSCamera();
-
-        if (cam == null) return null;
-
-        Ray ray = new Ray(cam.transform.position, cam.transform.forward);
-        RaycastHit hit;
-
-        if (!Physics.Raycast(ray, out hit, distance, layerMask)) return null;
-
-        return hit.collider.GetComponentInParent<GearItem>();
-    }
-
-    private static GearItem? FindGearByCameraOrNearby(Vector3 nearbyPosition, int layerMask, float distance = 6f, float nearbyRadius = 0.6f)
-    {
-        GearItem? gear = FindGearByCamera(layerMask, distance);
-
-        if (gear != null) return gear;
-
-        return FindNearbyGear(nearbyPosition, nearbyRadius);
-    }
-}
 
     }
 }
